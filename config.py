@@ -1,0 +1,4 @@
+DATASET_IDS = [15, 39, 53, 81, 33, 109, 146]
+DATA_FOLDER = "data"
+RESULTS_FOLDER = "results"
+R = 100
