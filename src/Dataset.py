@@ -31,6 +31,12 @@ def read_dataset(name, array=True):
     return X, y
 
 def get_binary_dataset(X, k, r=100):
+    '''
+    Returns the binary dataset
+    - X_b: Binary dataset with shape (n, total_k)
+    - ls_partitions_labels: List of partitions labels
+    - cluster_sizes: List of cluster sizes
+    '''
     n = len(X)
     classes = k
 
