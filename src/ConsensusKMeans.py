@@ -10,7 +10,7 @@ class ConsensusKMeans:
 
     r = config.R
 
-    def __init__(self, n_clusters, n_init=10, max_iter=1000, tol=1e-10, 
+    def __init__(self, n_clusters, cluster_sizes, n_init=10, max_iter=1000, tol=1e-10, 
                  random_state=None, type='Uc', p=5, normalize=False):
         self.k = n_clusters
         # self.distance = distance # 'euclidean', 'jensenshannon', 'cosine', 'p'
@@ -20,7 +20,7 @@ class ConsensusKMeans:
         self.random_state = random_state
         self.centroids = None
         self.labels_ = None
-        self.cluster_sizes = None
+        self.cluster_sizes = cluster_sizes
         self.ls_partitions_labels = []
         self.type = type
         self.normalize = normalize
@@ -123,9 +123,11 @@ class ConsensusKMeans:
 
         return np.average(X_r, weights=weights, axis=0)
 
-    def fit(self, X_b, ls_partitions_labels, cluster_sizes, weights=None):
-        self.ls_partitions_labels = ls_partitions_labels
-        self.cluster_sizes = cluster_sizes
+    def fit(self, X_b, weights=None):
+
+        cluster_sizes = self.cluster_sizes
+        X_b_split = np.split(X_b, np.cumsum(cluster_sizes), axis=1)[:-1]
+        self.ls_partitions_labels = [np.argmax(x, axis=1) for x in X_b_split]
 
         if weights is None:
             weights = np.ones(self.r) / self.r
@@ -171,17 +173,13 @@ class ConsensusKMeans:
         self.weights = weights
         return self
     
-    # def get_utility(self, labels, basic_partitions):
-        
-    #     ls_utility = []
-    #     for pi_i in basic_partitions:
-    #         p_k, P_k_i, P_i = self.extract_p(labels, pi_i)
-    #         norm_P_k_i = np.linalg.norm(P_k_i, axis=1, ord=2).reshape(-1, 1) ** 2
-    #         norm_P_i = np.linalg.norm(P_i, ord=2) ** 2
-    #         utility = (p_k * norm_P_k_i).sum() - norm_P_i
-    #         ls_utility.append(utility)
+    def predict(self, X_b):
+        return self.f(X_b, self.centroids, self.cluster_sizes, weights=self.weights).argmin(axis=1)
+    
+    def fit_predict(self, X_b, **kwargs):
+        self.fit(X_b, **kwargs)
+        return self.labels_
 
-    #     return np.mean(ls_utility)
     
     def get_weight_norm(self, X_b_split, centroids_split):
         weight_norm = np.ones((self.r, self.k))
