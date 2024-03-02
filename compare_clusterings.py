@@ -1,6 +1,8 @@
 
 from src.Dataset import read_dataset, get_binary_dataset
 from sklearn.metrics.cluster import adjusted_rand_score
+from sklearn.cluster import SpectralClustering, KMeans, AgglomerativeClustering
+from sklearn.mixture import GaussianMixture
 from src.ConsensusKMeans import ConsensusKMeans
 import numpy as np
 import config
@@ -9,58 +11,75 @@ import pandas as pd
 import os
 import time
 
-ls_datasets = ['breast', 'ecoli', 'iris', 'pen-based', 'statlog', 'dermatology', 'wine'] # 'pendigits', takes too long
+ls_datasets = ['breast', 'ecoli', 'iris', 'pen-based', 'statlog', 'dermatology', 'wine']
 d_results = {}
 d_time = {}
+ls_results = []
+ls_time = []
 for dataset in ls_datasets:
+    d_results[dataset] = {}
+    d_time[dataset] = {}
+
     # Load data
     X, y = read_dataset(dataset)
     k = len(np.unique(y))
         
     # Get the binary dataset
     # tic = time.time()
-    binary_info = get_binary_dataset(X, k, r=100)
+    X_b, _, cluster_sizes = get_binary_dataset(X, k, r=100)
     toc = time.time()
     # d_binary_generation_time[dataset] = toc - tic
     
     # Instantiate ConsensusKMeans for every distance
-    KCC = ConsensusKMeans(n_clusters=k, type='Uc', normalize=False)
+    KCC = ConsensusKMeans(n_clusters=k, type='Uh', normalize=False, cluster_sizes=cluster_sizes, n_init=10)
 
     # Hierarchical sklearn clustering
-    from sklearn.cluster import AgglomerativeClustering
-    HC = AgglomerativeClustering(n_clusters=k, linkage='ward')
 
-    # Train the models and measure the time
-    tic = time.time()
-    KCC.fit(*binary_info)
-    toc = time.time()
-    d_time[dataset] = {}
-    d_time[dataset]['KCC'] = toc - tic
-    print(f"Time for {dataset} KCC: {toc - tic}")
+    HC_ward = AgglomerativeClustering(n_clusters=k, linkage='ward')
+    HC_avg = AgglomerativeClustering(n_clusters=k, linkage='average')
+    HC_single = AgglomerativeClustering(n_clusters=k, linkage='single')
+    HC_comp = AgglomerativeClustering(n_clusters=k, linkage='complete')
 
-    tic = time.time()
-    HC.fit(X)
-    toc = time.time()
-    d_time[dataset]['HC'] = toc - tic
-    print(f"Time for {dataset} HC: {toc - tic}")
+    # Prototype based clustering
+    KM = KMeans(n_clusters=k, n_init=10)
 
+    # Gaussian Mixture Model
+    GMM_f = GaussianMixture(n_components=k, covariance_type='full', n_init=10)
+    GMM_t = GaussianMixture(n_components=k, covariance_type='tied', n_init=10)
+    GMM_d = GaussianMixture(n_components=k, covariance_type='diag', n_init=10)
+    GMM_s = GaussianMixture(n_components=k, covariance_type='spherical', n_init=10)
 
-    # Measure the performance
-    d_results[dataset] = {}
-    d_results[dataset]['KCC'] = adjusted_rand_score(y, KCC.labels_)
-    d_results[dataset]['HC'] = adjusted_rand_score(y, HC.labels_)
+    # Spectral Clustering
+    # SC = SpectralClustering(n_clusters=k, n_init=10)
 
-    print(f"Adjusted Rand Index for {dataset} KCC: {adjusted_rand_score(y, KCC.labels_)}")
-    print(f"Adjusted Rand Index for {dataset} HC: {adjusted_rand_score(y, HC.labels_)}")
-    
+    d_models = {'HC_ward': HC_ward, 'HC_avg': HC_avg, 'HC_single': HC_single, 'HC_comp': HC_comp, 
+                'KM': KM, 'GMM_full': GMM_f, 'GMM_tied': GMM_t, 'GMM_diag': GMM_d, 'GMM_spher': GMM_s, # 'SC': SC,
+                'KCC': KCC}
+
+    for model_name, model in d_models.items():
+        tic = time.time()
+        labels = model.fit_predict(X if model_name != 'KCC' else X_b)
+        toc = time.time()
+        d_time[dataset][model_name] = toc - tic
+        print(f"Time for {dataset} {model_name}: {toc - tic}")
+
+        d_results[dataset][model_name] = adjusted_rand_score(y,labels)
+        print(f"Adjusted Rand Index for {dataset} {model_name}: {adjusted_rand_score(y, labels)}")
+
+    df_results = pd.DataFrame(d_results).T
+    df_time = pd.DataFrame(d_time).T
+
+    print(f"Results for {dataset}:\n{df_results}\n")
+    print(f"Times for {dataset}:\n{df_results}\n")
+
 # Print the results
-df_results = pd.DataFrame(d_results).T
+# df_results = pd.concat(ls_results)
+
 # df_results = df_results.loc[:, ['Uc', 'Uh', 'Ucos', 'ULp5', 'ULp8', 'NUc', 'NUh', 'NUcos', 'NULp5', 'NULp8']]
 print("RESULTS\n",df_results, "\n")
 
-df_time = pd.DataFrame(d_time).T
+# df_time = pd.concat(ls_time)
 # df_time = df_time.loc[:, ['Uc', 'Uh', 'Ucos', 'ULp5', 'ULp8', 'NUc', 'NUh', 'NUcos', 'NULp5', 'NULp8']]
-# df_time['KMeans_100times'] = d_binary_generation_time.values()
 print("TIMES\n",df_time, "\n")
 
 # Save the results to results path and create a csv with the results and timestamp
