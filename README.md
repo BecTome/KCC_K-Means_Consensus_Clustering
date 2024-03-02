@@ -27,7 +27,8 @@ pip install -r requirements.txt
 - Execute `run.sh`
   1. Download the datasets from the UCI repository (You can comment this line if you have already downloaded the datasets)
   2. Run the main file `main.py` with the parameters set in the `config.py` file
-  3. The results will be saved in the results folder
+  3. Run the comparison of different clustering algorithms (`compare_clusterings.py`)
+  4. The results will be saved in the results folder
 
 ## Dataset details
 
@@ -44,4 +45,14 @@ pip install -r requirements.txt
 - [dermatology](https://archive.ics.uci.edu/dataset/33/dermatology)
 
 - [wine](https://archive.ics.uci.edu/dataset/109/wine)
+
+# References
+
+[1] F. Pedregosa, G. Varoquaux, A. Gramfort, V. Michel, B. Thirion, O. Grisel, M. Blondel, P. Prettenhofer, R. Weiss, V. Dubourg, J. Van-derplas, A. Passos, D. Cournapeau, M. Brucher,
+M. Perrot, and E. Duchesnay. Scikit-learn: Ma-chine learning in Python. Journal of Machine
+Learning Research, 12:2825–2830, 2011.
+
+[2] Junjie Wu, Hongfu Liu, Hui Xiong, Jie Cao, and Jian Chen. K-means-based consensus clus-
+tering: A unified view. IEEE Transactions on Knowledge and Data Engineering, 27(1):155–
+169, 2015.
 
