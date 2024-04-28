@@ -28,10 +28,11 @@ if __name__ == "__main__":
 
 
     ls_datasets = ['breast', 'ecoli', 'iris', 'pen-based', 'statlog', 'dermatology', 'wine']
+    # ls_datasets = ['breast', 'dermatology']
     d_results = {}
     d_time = {}
     d_binary_generation_time = {}
-
+    np.random.seed(100)
     for dataset in ls_datasets:
         # Load data
         X, y = read_dataset(dataset)
@@ -39,24 +40,25 @@ if __name__ == "__main__":
 
         # Get the binary dataset
         tic = time.time()
-        binary_info = get_binary_dataset(X, k, r=100)
+        # binary_info = get_binary_dataset(X, k, r=100)
+        X_b, _, cluster_sizes = get_binary_dataset(X, k, r=100)
         toc = time.time()
 
         d_binary_generation_time[dataset] = toc - tic
         
         # Instantiate ConsensusKMeans for every distance
-        KCC_uc = ConsensusKMeans(n_clusters=k, type='Uc', normalize=False)
-        KCC_ucos = ConsensusKMeans(n_clusters=k, type='Ucos', normalize=False)
-        KCC_uh = ConsensusKMeans(n_clusters=k, type='Uh', normalize=False)
-        KCC_ulp5 = ConsensusKMeans(n_clusters=k, type='ULp', p=5, normalize=False)
-        KCC_ulp8 = ConsensusKMeans(n_clusters=k, type='ULp', p=8, normalize=False)
+        KCC_uc = ConsensusKMeans(n_clusters=k, type='Uc', normalize=False, cluster_sizes=cluster_sizes)
+        KCC_ucos = ConsensusKMeans(n_clusters=k, type='Ucos', normalize=False, cluster_sizes=cluster_sizes)
+        KCC_uh = ConsensusKMeans(n_clusters=k, type='Uh', normalize=False, cluster_sizes=cluster_sizes)
+        KCC_ulp5 = ConsensusKMeans(n_clusters=k, type='ULp', p=5, normalize=False, cluster_sizes=cluster_sizes)
+        KCC_ulp8 = ConsensusKMeans(n_clusters=k, type='ULp', p=8, normalize=False, cluster_sizes=cluster_sizes)
 
         # Instantiate ConsensusKMeans for normalized utility functions
-        KCC_uc_norm = ConsensusKMeans(n_clusters=k, type='Uc', normalize=True)
-        KCC_ucos_norm = ConsensusKMeans(n_clusters=k, type='Ucos', normalize=True)
-        KCC_uh_norm = ConsensusKMeans(n_clusters=k, type='Uh', normalize=True)
-        KCC_ulp5_norm = ConsensusKMeans(n_clusters=k, type='ULp', p=5, normalize=True)
-        KCC_ulp8_norm = ConsensusKMeans(n_clusters=k, type='ULp', p=8, normalize=True)
+        KCC_uc_norm = ConsensusKMeans(n_clusters=k, type='Uc', normalize=True, cluster_sizes=cluster_sizes)
+        KCC_ucos_norm = ConsensusKMeans(n_clusters=k, type='Ucos', normalize=True, cluster_sizes=cluster_sizes)
+        KCC_uh_norm = ConsensusKMeans(n_clusters=k, type='Uh', normalize=True, cluster_sizes=cluster_sizes)
+        KCC_ulp5_norm = ConsensusKMeans(n_clusters=k, type='ULp', p=5, normalize=True, cluster_sizes=cluster_sizes)
+        KCC_ulp8_norm = ConsensusKMeans(n_clusters=k, type='ULp', p=8, normalize=True, cluster_sizes=cluster_sizes)
 
         # create a list with all the models
         models = [KCC_uc, KCC_uh, KCC_ucos,  KCC_ulp5, KCC_ulp8, 
@@ -72,7 +74,7 @@ if __name__ == "__main__":
 
             # Fit the model and get the ARI
             tic = time.time()
-            model.fit(*binary_info)        
+            model.fit(X_b)        
             toc = time.time()     
 
             ari = adjusted_rand_score(y, model.labels_)
