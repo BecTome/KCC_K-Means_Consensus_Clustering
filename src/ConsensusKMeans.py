@@ -10,7 +10,7 @@ class ConsensusKMeans:
 
     r = config.R
 
-    def __init__(self, n_clusters, cluster_sizes, n_init=10, max_iter=1000, tol=1e-10, 
+    def __init__(self, n_clusters, cluster_sizes, n_init=1, max_iter=1000, tol=1e-10, 
                  random_state=None, type='Uc', p=5, normalize=False):
         self.k = n_clusters
         # self.distance = distance # 'euclidean', 'jensenshannon', 'cosine', 'p'
@@ -100,13 +100,16 @@ class ConsensusKMeans:
     
     def f(self, X_b, centroids, cluster_sizes, weights):
 
+
         X_b_split = np.split(X_b, np.cumsum(cluster_sizes), axis=1)[:-1]
         centroids_split = np.split(centroids, np.cumsum(cluster_sizes), axis=1)[:-1]
-        eps = 1E-8
-        pw = 1
+
+        eps = 1E-8 # Small value to avoid division by zero and log(0)
+        pw = 1     # Power for the distance matrix, equals 2 for euclidean distance
         if self.type == 'Uc':
             pw = 2
 
+        # The control is done because in the case of KL divergence we don't use cdist but our own implementation
         if self.type != 'Uh':
             if self.normalize:
                 weight_norm = 1/(self.get_weight_norm(X_b_split, centroids_split) + eps)
@@ -124,11 +127,20 @@ class ConsensusKMeans:
         return np.average(X_r, weights=weights, axis=0)
 
     def fit(self, X_b, weights=None):
+        '''
+        Receive the binary dataset and the weights for each partition
+        - Initialize centroids
+        - Calculate the distance matrix using f
+        - Update centroids
+        - Repeat until convergence (inertia < tol)
+        '''
 
+        # Split the binary dataset into the partitions
         cluster_sizes = self.cluster_sizes
         X_b_split = np.split(X_b, np.cumsum(cluster_sizes), axis=1)[:-1]
         self.ls_partitions_labels = [np.argmax(x, axis=1) for x in X_b_split]
 
+        # Calulate the weights for each partition, being the same by default
         if weights is None:
             weights = np.ones(self.r) / self.r
         
@@ -136,21 +148,31 @@ class ConsensusKMeans:
         best_centroids = None
         best_labels = None
 
+        # Repeat the algorithm n_init times to reduce randomness
         for _ in tqdm(range(self.n_init)):
             if self.random_state is not None:
                 np.random.seed(self.random_state)
 
+            # Start with a random pick of centroids
             centroids = self.initialize_centroids(X_b)
-            # labels = np.random.choice(self.k, len(X_b))
             it = 0
             inertia_old = 1E8
             while True:
+                # Calculate distance matrix
                 d_matrix = self.f(X_b, centroids, self.cluster_sizes, weights=weights)
+
+                # Set as labels the closest centroid
                 labels = d_matrix.argmin(axis=1)
+
+                # Update centroids
                 centroids_old = centroids
+
+                # Update centroids
                 centroids = self.update_centroids(centroids_old, labels)
+
                 it += 1
 
+                # Check for convergence
                 inertia = d_matrix.min(axis=1).sum()
                 if (inertia_old - inertia) < self.tol:
                     # print(f"Converged in {it} iterations")
@@ -169,7 +191,6 @@ class ConsensusKMeans:
 
         self.centroids = best_centroids
         self.labels_ = best_labels
-        # self.utility = self.get_utility(self.labels_, self.ls_partitions_labels)
         self.weights = weights
         return self
     
@@ -182,9 +203,12 @@ class ConsensusKMeans:
 
     
     def get_weight_norm(self, X_b_split, centroids_split):
+        '''
+        Calculate the normalized weights for each partition
+        '''
         weight_norm = np.ones((self.r, self.k))
         for i in range(len(X_b_split)):
-            P_i = np.unique(self.ls_partitions_labels[i], return_counts=True)[1] # / len(self.ls_partitions_labels[i])
+            P_i = np.unique(self.ls_partitions_labels[i], return_counts=True)[1]
             
             if self.type in 'Uc':            
                 weight_norm[i, :] = [np.linalg.norm(centroid, ord=2) ** 2 for centroid in centroids_split[i]]
