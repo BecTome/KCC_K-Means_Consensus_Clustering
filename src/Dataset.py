@@ -18,7 +18,8 @@ def read_dataset(name, array=True):
         # Get dummies for categorical data
         # X = X.dropna(axis=0, how='any')
         # y = y[X.index]
-        X = X.fillna(0)
+        # X = X.fillna(0)
+        X = X.fillna(X.mean())
         # X = pd.get_dummies(X)
         # X = X.fillna(X.median())
     elif name == 'wine':
@@ -30,7 +31,7 @@ def read_dataset(name, array=True):
         y = y.values
     return X, y
 
-def get_binary_dataset(X, k, r=100):
+def get_binary_dataset(X, k, r=100, n_init=1):
     '''
     Returns the binary dataset
     - X_b: Binary dataset with shape (n, total_k)
@@ -40,15 +41,18 @@ def get_binary_dataset(X, k, r=100):
     n = len(X)
     classes = k
 
-    max_k = np.sqrt(n) + 1
+    # max_k = np.sqrt(n) + 1
+    # min_k = classes
+    min_k = 2
+    max_k = 2 * classes
     ls_partitions = []
     ls_partitions_labels = []
     cluster_sizes = []
     total_k = 0
-
+    # classes
     for _ in tqdm(range(r), desc="Clustering Progress"):
-        k = np.random.randint(classes, max_k) # Closed form both sides
-        partition_i = sk_KMeans(n_clusters=k, n_init=10).fit(X).labels_
+        k = np.random.randint(min_k, max_k) # Closed form both sides
+        partition_i = sk_KMeans(n_clusters=k, n_init=n_init).fit(X).labels_
         ls_partitions_labels.append(partition_i)
         cluster_sizes.append(k)
         ls_partitions.append(one_hot_encode(partition_i, k))
