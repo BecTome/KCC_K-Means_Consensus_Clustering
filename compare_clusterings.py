@@ -2,6 +2,7 @@
 from src.Dataset import read_dataset, get_binary_dataset
 from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.cluster import SpectralClustering, KMeans, AgglomerativeClustering
+from tslearn.clustering import KernelKMeans
 from sklearn.mixture import GaussianMixture
 from src.ConsensusKMeans import ConsensusKMeans
 import numpy as np
@@ -12,10 +13,12 @@ import os
 import time
 
 ls_datasets = ['breast', 'ecoli', 'iris', 'pen-based', 'statlog', 'dermatology', 'wine']
+
 d_results = {}
 d_time = {}
 ls_results = []
 ls_time = []
+np.random.seed(42)
 for dataset in ls_datasets:
     d_results[dataset] = {}
     d_time[dataset] = {}
@@ -31,7 +34,8 @@ for dataset in ls_datasets:
     # d_binary_generation_time[dataset] = toc - tic
     
     # Instantiate ConsensusKMeans for every distance
-    KCC = ConsensusKMeans(n_clusters=k, type='Uh', normalize=False, cluster_sizes=cluster_sizes, n_init=10)
+    # CHANGES: Only one initialization
+    KCC = ConsensusKMeans(n_clusters=k, type='Uc', normalize=False, cluster_sizes=cluster_sizes, n_init=10)
 
     # Hierarchical sklearn clustering
 
@@ -49,11 +53,14 @@ for dataset in ls_datasets:
     GMM_d = GaussianMixture(n_components=k, covariance_type='diag', n_init=10)
     GMM_s = GaussianMixture(n_components=k, covariance_type='spherical', n_init=10)
 
-    # Spectral Clustering
+    # Spectral Clustering too slow for large datasets)
     # SC = SpectralClustering(n_clusters=k, n_init=10)
 
+    # kernel KMeans
+    KK = KernelKMeans(n_clusters=k, kernel='rbf', n_init=10)
+
     d_models = {'HC_ward': HC_ward, 'HC_avg': HC_avg, 'HC_single': HC_single, 'HC_comp': HC_comp, 
-                'KM': KM, 'GMM_full': GMM_f, 'GMM_tied': GMM_t, 'GMM_diag': GMM_d, 'GMM_spher': GMM_s, # 'SC': SC,
+                'KM': KM, 'GMM_full': GMM_f, 'GMM_tied': GMM_t, 'GMM_diag': GMM_d, 'GMM_spher': GMM_s,  'KernelKM': KK,
                 'KCC': KCC}
 
     for model_name, model in d_models.items():
